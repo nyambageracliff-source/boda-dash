@@ -1,0 +1,1507 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Real Boda Rider KE</title>
+    <!-- Favicon as inline SVG -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🏍️</text></svg>" />
+    <!-- Web App Manifest for PWA support -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Real Boda Rider KE","short_name":"Boda Rider","description":"The Streets of Kenya Boda Boda Simulator","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#dc2626","orientation":"landscape"}' />
+    <meta name="theme-color" content="#dc2626" />
+    
+    <!-- CDNs -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+    
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #0f172a;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      @keyframes scaleIn { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+      .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .animate-scale-in { animation: scaleIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+      const { useState, useEffect, useRef } = React;
+
+      // 1. SOUND GENERATOR (Web Audio Synthesizer)
+      class BodaAudioSystem {
+        constructor() {
+          this.ctx = null;
+          this.engineOsc = null;
+          this.engineGain = null;
+          this.isEngineRunning = false;
+        }
+        init() {
+          if (this.ctx) return;
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) this.ctx = new AudioContextClass();
+        }
+        playCoin() {
+          this.init();
+          if (!this.ctx) return;
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const now = this.ctx.currentTime;
+          const osc1 = this.ctx.createOscillator();
+          const osc2 = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(880, now);
+          osc1.frequency.exponentialRampToValueAtTime(1320, now + 0.15);
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(1109, now);
+          osc2.frequency.exponentialRampToValueAtTime(1760, now + 0.15);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.2);
+          osc2.stop(now + 0.2);
+        }
+        playFuel() {
+          this.init();
+          if (!this.ctx) return;
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(330, now);
+          osc.frequency.exponentialRampToValueAtTime(660, now + 0.25);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        }
+        playCrash() {
+          this.init();
+          if (!this.ctx) return;
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        }
+        playHorn() {
+          this.init();
+          if (!this.ctx) return;
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const now = this.ctx.currentTime;
+          this.beep(880, 0.08, now);
+          this.beep(880, 0.08, now + 0.12);
+        }
+        beep(freq, dur, start) {
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.05, start);
+          gain.gain.setValueAtTime(0.05, start + dur - 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(start);
+          osc.stop(start + dur);
+        }
+        playSuccess() {
+          this.init();
+          if (!this.ctx) return;
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const now = this.ctx.currentTime;
+          const notes = [261.63, 329.63, 392.00, 523.25];
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+            gain.gain.setValueAtTime(0.1, now + idx * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.25);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.1);
+            osc.stop(now + idx * 0.1 + 0.3);
+          });
+        }
+        startEngine() {
+          this.init();
+          if (!this.ctx || this.isEngineRunning) return;
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          try {
+            const now = this.ctx.currentTime;
+            this.engineOsc = this.ctx.createOscillator();
+            this.engineGain = this.ctx.createGain();
+            this.engineOsc.type = 'triangle';
+            this.engineOsc.frequency.setValueAtTime(45, now);
+            this.engineGain.gain.setValueAtTime(0.03, now);
+            this.engineOsc.connect(this.engineGain);
+            this.engineGain.connect(this.ctx.destination);
+            this.engineOsc.start(now);
+            this.isEngineRunning = true;
+          } catch (e) {
+            console.warn(e);
+          }
+        }
+        updateEngine(speedRatio) {
+          if (!this.ctx || !this.isEngineRunning || !this.engineOsc || !this.engineGain) return;
+          const now = this.ctx.currentTime;
+          const targetFreq = 45 + speedRatio * 95;
+          const jitter = Math.sin(now * 50) * 1.5;
+          this.engineOsc.frequency.setTargetAtTime(targetFreq + jitter, now, 0.05);
+          const targetGain = 0.02 + speedRatio * 0.04;
+          this.engineGain.gain.setTargetAtTime(targetGain, now, 0.1);
+        }
+        stopEngine() {
+          if (this.engineOsc) {
+            try { this.engineOsc.stop(); this.engineOsc.disconnect(); } catch (e) {}
+            this.engineOsc = null;
+          }
+          if (this.engineGain) {
+            try { this.engineGain.disconnect(); } catch (e) {}
+            this.engineGain = null;
+          }
+          this.isEngineRunning = false;
+        }
+      }
+      const BodaAudio = new BodaAudioSystem();
+
+      // 2. CONFIGURATIONS
+      const BIKES = [
+        {
+          id: 'boxer_150',
+          name: 'Boxer 150 (Kifaru)',
+          tagline: 'The Ultimate Kenyan Workhorse',
+          color: '#e63946',
+          accentColor: '#1d3557',
+          maxSpeed: 15,
+          acceleration: 0.35,
+          braking: 0.5,
+          handling: 1.0,
+          price: 0,
+          description: 'Reliable, sturdy, and well-balanced. Great for handling heavy cargo like Mama Mboga.'
+        },
+        {
+          id: 'hlx_125',
+          name: 'HLX 125 (Pika-Pika)',
+          tagline: 'Lightweight & Ultra-Nimble',
+          color: '#2a9d8f',
+          accentColor: '#e9c46a',
+          maxSpeed: 17,
+          acceleration: 0.55,
+          braking: 0.4,
+          handling: 1.4,
+          price: 350,
+          description: 'Fast off the line and steers with razor precision. Perfect for beat-the-clock student runs.'
+        },
+        {
+          id: 'cruiser_200',
+          name: 'Cruiser 200 (Simba)',
+          tagline: 'Heavy Metal King of the Highway',
+          color: '#ffb703',
+          accentColor: '#fb8500',
+          maxSpeed: 21,
+          acceleration: 0.3,
+          braking: 0.3,
+          handling: 0.8,
+          price: 800,
+          description: 'A powerhouse motorcycle with immense top speed. Takes longer to brake, but flies like the wind.'
+        }
+      ];
+
+      const LOCATIONS = [
+        {
+          id: 'nairobi_highway',
+          name: 'Nairobi Expressway',
+          description: 'Smooth tarmac with tall buildings and heavy commuter traffic. Watch out for speeding cars!',
+          bgColor: '#1a1c1e',
+          roadColor: '#343a40',
+          shoulderColor: '#1e3a1e',
+          sceneryType: 'city',
+          trafficDensity: 0.6,
+          coinDensity: 0.8,
+          potholeDensity: 0.3
+        },
+        {
+          id: 'mombasa_road',
+          name: 'Mombasa Coastal Road',
+          description: 'Scenic palm trees, sandy lanes, and winding roads. Avoid fruit carts and slow tuk-tuks!',
+          bgColor: '#87CEEB',
+          roadColor: '#495057',
+          shoulderColor: '#e9c46a',
+          sceneryType: 'coast',
+          trafficDensity: 0.45,
+          coinDensity: 0.7,
+          potholeDensity: 0.4
+        },
+        {
+          id: 'rift_valley',
+          name: 'Great Rift Valley Pass',
+          description: 'Steep mountain descents, massive potholes (mashimo), and occasional stray goats crossing the road!',
+          bgColor: '#2d6a4f',
+          roadColor: '#2b2d42',
+          shoulderColor: '#5c4033',
+          sceneryType: 'valley',
+          trafficDensity: 0.35,
+          coinDensity: 0.9,
+          potholeDensity: 0.8
+        }
+      ];
+
+      const PASSENGER_TEMPLATES = [
+        {
+          role: 'mama',
+          name: 'Mama Mboga',
+          avatar: '🥬',
+          dialogue: 'Harakisha mwanangu! Soko inafungwa hivi karibuni!',
+          weight: 1.4,
+          payrate: 2.0,
+          fare: 50,
+          targetDistance: 1.5
+        },
+        {
+          role: 'student',
+          name: 'Mwanafunzi (Student)',
+          avatar: '🎒',
+          dialogue: 'Nimechelewa mtihani! Tafadhali nifikishe shule haraka!',
+          weight: 0.8,
+          payrate: 1.5,
+          fare: 40,
+          targetDistance: 1.2,
+          timeLimit: 45
+        },
+        {
+          role: 'mzee',
+          name: 'Mzee Otieno',
+          avatar: '👴',
+          dialogue: 'Endesha polepole bwana. Mgongo wangu unauma.',
+          weight: 1.1,
+          payrate: 1.8,
+          fare: 60,
+          targetDistance: 1.8,
+          comfort: 100
+        }
+      ];
+
+      function generateRandomPassenger() {
+        const template = PASSENGER_TEMPLATES[Math.floor(Math.random() * PASSENGER_TEMPLATES.length)];
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          name: template.name,
+          role: template.role,
+          avatar: template.avatar,
+          weight: template.weight,
+          payrate: template.payrate,
+          dialogue: template.dialogue,
+          fare: template.fare,
+          targetDistance: template.targetDistance,
+          distanceTraveled: 0,
+          comfort: 100
+        };
+      }
+
+      // 3. SVG ICONS MAP (Direct inlined for absolute speed & offline support)
+      const Icons = {
+        Play: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="6 3 20 12 6 21 6 3" fill="currentColor"/></svg>,
+        Settings: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+        Award: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>,
+        MapPin: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+        Wrench: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
+        Zap: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor"/></svg>,
+        Disc: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>,
+        Gauge: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12c0-5.52 4.48-10 10-10z"/><path d="M12 6a6 6 0 0 1 6 6"/><line x1="12" y1="12" x2="16" y2="8"/></svg>,
+        Compass: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>,
+        Bike: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 11.5a2.5 2.5 0 1 0-2.5-2.5M12 17.5V14l-3-3h4l2 2.5H19"/></svg>,
+        Coins: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="8" cy="8" r="6"/><circle cx="18" cy="18" r="4"/><path d="M12 18a6 6 0 0 0-6-6"/></svg>,
+        Volume2: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>,
+        VolumeX: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>,
+        Keyboard: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="10" y2="8"/><line x1="14" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="10" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="14" y2="12"/><line x1="18" y1="12" x2="18" y2="12"/><line x1="7" y1="16" x2="17" y2="16"/></svg>,
+        Smartphone: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>,
+        CheckCircle: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+        TrendingUp: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+        CloudRain: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>,
+        XCircle: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
+        ShieldAlert: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+        Flame: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
+        Navigation: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>,
+        Shield: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+        Heart: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
+        RotateCcw: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>,
+        Home: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+        Check: (props) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="20 6 9 17 4 12"/></svg>
+      };
+
+      // 4. MAIN MENU COMPONENT
+      function Menu({ saveData, selectedLocationId, onSelectLocation, steeringMode, onSelectSteeringMode, weather, onSelectWeather, onUpgrade, onPurchaseBike, onSelectBike, onStartGame, soundEnabled, onToggleSound }) {
+        const [activeTab, setActiveTab] = useState('main');
+        const activeBike = BIKES.find(b => b.id === saveData.activeBikeId) || BIKES[0];
+        const currentLocation = LOCATIONS.find(l => l.id === selectedLocationId) || LOCATIONS[0];
+
+        const getUpgradeCost = (type) => {
+          const currentLevel = saveData.upgrades[type];
+          return currentLevel >= 5 ? Infinity : 80 + currentLevel * 120;
+        };
+
+        const renderStatBar = (label, value, color, icon) => (
+          <div className="mb-3">
+            <div className="flex justify-between items-center text-xs text-zinc-400 mb-1">
+              <span className="flex items-center gap-1.5 font-medium">{icon}{label}</span>
+              <span className="font-mono font-bold text-zinc-200">{value}/5</span>
+            </div>
+            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${(value / 5) * 100}%`, backgroundColor: color }} />
+            </div>
+          </div>
+        );
+
+        const ACHIEVEMENTS = [
+          { id: 'first_ride', title: 'Stage 1 Complete', desc: 'Deliver your first passenger safely', icon: '🟢' },
+          { id: 'coin_hunter', title: 'Chapaa Master', desc: 'Collect 100 coins in a single ride', icon: '💰' },
+          { id: 'pothole_survivor', title: 'Shock Absorber Pro', desc: 'Survive hitting 5 potholes in one run', icon: '🕳️' },
+          { id: 'distance_pro', title: 'Long Distance Rider', desc: 'Ride more than 5.0 KM total', icon: '📍' },
+          { id: 'matatu_ninja', title: 'Matatu Ninja', desc: 'Dodge 15 matatus without crashing', icon: '🚌' }
+        ];
+
+        return (
+          <div className="fixed inset-0 bg-zinc-950 text-white flex flex-col overflow-y-auto font-sans animate-fade-in">
+            {/* KENYAN FLAG STRIP */}
+            <div className="h-2.5 w-full flex shrink-0">
+              <div className="bg-black h-full flex-1" />
+              <div className="bg-red-600 h-full flex-1" />
+              <div className="bg-green-600 h-full flex-1" />
+            </div>
+
+            <header className="p-4 flex justify-between items-center bg-zinc-900 border-b border-zinc-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-600/10 rounded-lg border border-red-500/20 text-red-500">
+                  <Icons.Bike className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-black tracking-tight text-white flex items-center gap-1.5">
+                    REAL BODA <span className="text-red-500 font-bold px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-xs">RIDER KE</span>
+                  </h1>
+                  <p className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase flex items-center gap-1.5 flex-wrap">
+                    The Streets of Kenya Simulator
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full text-[8px] font-black tracking-normal normal-case">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> 100% Offline Mode
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={onToggleSound} className="p-2.5 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition border border-zinc-700/50 text-zinc-300">
+                  {soundEnabled ? <Icons.Volume2 className="w-5 h-5" /> : <Icons.VolumeX className="w-5 h-5 text-red-400" />}
+                </button>
+                <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5 font-mono text-amber-400">
+                  <Icons.Coins className="w-4 h-4" />
+                  <span className="font-bold text-sm">{saveData.coins}</span>
+                </div>
+              </div>
+            </header>
+
+            <main className="flex-1 max-w-xl w-full mx-auto p-4 flex flex-col justify-between">
+              {activeTab === 'main' && (
+                <div className="flex-grow flex flex-col justify-center space-y-6 py-4 animate-slide-up">
+                  <div className="relative rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 border border-zinc-800 p-6 shadow-xl overflow-hidden flex flex-col justify-end min-h-[140px]">
+                    <div className="absolute right-6 top-6 opacity-10 text-zinc-600"><Icons.Compass className="w-24 h-24" /></div>
+                    <div className="relative z-10">
+                      <span className="text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 bg-red-600 rounded-full text-white inline-block mb-3">Active Boda</span>
+                      <h2 className="text-xl font-black">{activeBike.name}</h2>
+                      <p className="text-xs text-zinc-400 font-mono italic mt-0.5">{activeBike.tagline}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div onClick={() => setActiveTab('locations')} className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 transition-all p-4 rounded-xl cursor-pointer flex flex-col justify-between">
+                      <span className="text-zinc-500 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1"><Icons.MapPin className="w-3.5 h-3.5" /> Route</span>
+                      <div className="mt-2"><div className="font-bold text-sm truncate">{currentLocation.name}</div><div className="text-[10px] text-zinc-400 mt-0.5">Change expressway</div></div>
+                    </div>
+                    <div onClick={() => setActiveTab('garage')} className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 transition-all p-4 rounded-xl cursor-pointer flex flex-col justify-between">
+                      <span className="text-zinc-500 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1"><Icons.Wrench className="w-3.5 h-3.5" /> Tuning</span>
+                      <div className="mt-2"><div className="font-bold text-sm">Garage & Parts</div><div className="text-[10px] text-zinc-400 mt-0.5">Upgrade specs</div></div>
+                    </div>
+                  </div>
+
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Icons.Settings className="w-4 h-4" /> Steering Interface</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'tilt', label: 'Phone Tilt', icon: <Icons.Smartphone className="w-4 h-4" />, desc: 'Gyro steering' },
+                        { id: 'buttons', label: 'On-Screen', icon: <Icons.Smartphone className="w-4 h-4 rotate-90" />, desc: 'Touch buttons' },
+                        { id: 'keyboard', label: 'Keyboard', icon: <Icons.Keyboard className="w-4 h-4" />, desc: 'A/D or Arrows' }
+                      ].map(mode => (
+                        <button key={mode.id} onClick={() => onSelectSteeringMode(mode.id)} className={`flex flex-col items-center justify-center p-3 rounded-lg border text-center transition-all ${steeringMode === mode.id ? 'bg-zinc-100 border-white text-zinc-950 font-bold' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'}`}>
+                          {mode.icon}
+                          <span className="text-xs font-bold mt-1.5 leading-none">{mode.label}</span>
+                          <span className="text-[9px] opacity-60 mt-1 leading-none">{mode.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button onClick={onStartGame} className="w-full py-4 bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-450 active:scale-98 transition-all rounded-xl font-black text-base tracking-wider uppercase text-white shadow-lg flex items-center justify-center gap-2">
+                    <Icons.Play className="w-4.5 h-4.5" /> START GAME
+                  </button>
+                </div>
+              )}
+
+              {activeTab === 'garage' && (
+                <div className="flex-grow space-y-6 py-4 animate-slide-up">
+                  <div className="flex justify-between items-center">
+                    <button onClick={() => setActiveTab('main')} className="text-zinc-400 hover:text-white flex items-center gap-1 text-xs font-bold">← Back to Menu</button>
+                    <span className="text-xs font-mono text-zinc-500">Boda Tuning Garage</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Select Ride Model</h3>
+                    {BIKES.map(bike => {
+                      const isOwned = saveData.ownedBikes.includes(bike.id);
+                      const isActive = saveData.activeBikeId === bike.id;
+                      return (
+                        <div key={bike.id} className={`p-4 rounded-xl border transition-all flex justify-between items-center gap-3 ${isActive ? 'bg-zinc-900 border-zinc-100' : 'bg-zinc-950 border-zinc-800'}`}>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-3.5 h-3.5 rounded-full border border-black/30" style={{ backgroundColor: bike.color }} />
+                              <h4 className="font-bold text-sm">{bike.name}</h4>
+                            </div>
+                            <p className="text-xs text-zinc-400 mt-1 max-w-sm">{bike.description}</p>
+                          </div>
+                          <div className="min-w-[100px]">
+                            {isActive ? (
+                              <span className="text-[10px] bg-zinc-800 text-zinc-400 font-bold px-2 py-1.5 rounded-lg block text-center uppercase cursor-default">ACTIVE</span>
+                            ) : isOwned ? (
+                              <button onClick={() => onSelectBike(bike.id)} className="w-full py-1.5 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg text-xs font-bold transition">SELECT</button>
+                            ) : (
+                              <button onClick={() => onPurchaseBike(bike.id, bike.price)} disabled={saveData.coins < bike.price} className={`w-full py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${saveData.coins >= bike.price ? 'bg-amber-500 hover:bg-amber-450 text-zinc-950' : 'bg-zinc-900 text-zinc-500 cursor-not-allowed'}`}>
+                                <Icons.Coins className="w-3 h-3" /> BUY {bike.price}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 space-y-4">
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5"><Icons.Wrench className="w-4 h-4" /> Performance Upgrades</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { key: 'engine', label: 'Engine Compression', color: '#f87171', icon: <Icons.Zap className="w-3.5 h-3.5" />, desc: 'Acceleration boost' },
+                        { key: 'brakes', label: 'Caliper Brakes', color: '#60a5fa', icon: <Icons.Gauge className="w-3.5 h-3.5" />, desc: 'Stops faster' },
+                        { key: 'tires', label: 'Grip Tires', color: '#34d399', icon: <Icons.Disc className="w-3.5 h-3.5" />, desc: 'Swerve response' },
+                        { key: 'tank', label: 'Jerrycan Tank', color: '#fbbf24', icon: <Icons.Compass className="w-3.5 h-3.5" />, desc: 'Longer routes' }
+                      ].map(upg => {
+                        const lvl = saveData.upgrades[upg.key];
+                        const cost = getUpgradeCost(upg.key);
+                        return (
+                          <div key={upg.key} className="bg-zinc-950 border border-zinc-850 p-3 rounded-lg flex flex-col justify-between">
+                            <div>
+                              {renderStatBar(upg.label, lvl, upg.color, upg.icon)}
+                              <p className="text-[9px] text-zinc-500 leading-none">{upg.desc}</p>
+                            </div>
+                            {lvl < 5 ? (
+                              <button onClick={() => onUpgrade(upg.key)} disabled={saveData.coins < cost} className={`mt-3 w-full py-1 bg-amber-500 hover:bg-amber-450 text-zinc-950 text-xs font-bold rounded flex justify-center items-center gap-1 ${saveData.coins < cost && 'opacity-30 cursor-not-allowed'}`}>
+                                <Icons.Coins className="w-3 h-3" /> {cost}
+                              </button>
+                            ) : (
+                              <span className="mt-3 text-center text-[10px] font-bold text-emerald-500 py-1 bg-emerald-500/10 rounded">MAX LEVEL</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800 space-y-3">
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5"><Icons.CloudRain className="w-4 h-4" /> Environment Weather</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'clear', name: 'Sunny Clear', icon: '☀️', desc: 'Standard grip' },
+                        { id: 'rain', name: 'Nairobi Rain', icon: '🌧️', desc: 'Slippery roads' },
+                        { id: 'dusty', name: 'Dusty Road', icon: '🌪️', desc: 'Slow acceleration' }
+                      ].map(wOpt => (
+                        <button key={wOpt.id} onClick={() => onSelectWeather(wOpt.id)} className={`p-2.5 rounded-lg border text-center transition flex flex-col items-center justify-center ${weather === wOpt.id ? 'bg-zinc-100 border-white text-zinc-950 font-bold' : 'bg-zinc-950 border-zinc-800 text-zinc-400'}`}>
+                          <span className="text-lg">{wOpt.icon}</span>
+                          <span className="text-xs font-black mt-1 leading-none">{wOpt.name}</span>
+                          <span className="text-[9px] opacity-60 mt-1 leading-none">{wOpt.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'locations' && (
+                <div className="flex-grow space-y-6 py-4 animate-slide-up">
+                  <div className="flex justify-between items-center">
+                    <button onClick={() => setActiveTab('main')} className="text-zinc-400 hover:text-white flex items-center gap-1 text-xs font-bold">← Back to Menu</button>
+                    <span className="text-xs font-mono text-zinc-500">Pick Express Stage</span>
+                  </div>
+                  <div className="space-y-3">
+                    {LOCATIONS.map(loc => {
+                      const isSelected = loc.id === selectedLocationId;
+                      return (
+                        <div key={loc.id} onClick={() => onSelectLocation(loc.id)} className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between relative overflow-hidden ${isSelected ? 'bg-zinc-900 border-zinc-100' : 'bg-zinc-950 border-zinc-800'}`}>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-sm">{loc.name}</h4>
+                              {isSelected && <span className="text-[9px] bg-red-600 text-white font-bold px-1.5 rounded uppercase">Selected</span>}
+                            </div>
+                            <p className="text-xs text-zinc-400 mt-1">{loc.description}</p>
+                          </div>
+                          <div className="absolute right-0 bottom-0 top-0 w-1.5" style={{ backgroundColor: loc.shoulderColor }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'stats' && (
+                <div className="flex-grow space-y-6 py-4 animate-slide-up">
+                  <div className="flex justify-between items-center">
+                    <button onClick={() => setActiveTab('main')} className="text-zinc-400 hover:text-white flex items-center gap-1 text-xs font-bold">← Back to Menu</button>
+                    <span className="text-xs font-mono text-zinc-500">Achievements</span>
+                  </div>
+                  <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl grid grid-cols-2 gap-3 font-mono">
+                    <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-850">
+                      <div className="text-[9px] text-zinc-500 uppercase">Max Distance</div>
+                      <div className="text-base font-black mt-1 text-white">{saveData.highScoreDistance.toFixed(2)} KM</div>
+                    </div>
+                    <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-850">
+                      <div className="text-[9px] text-zinc-500 uppercase">Max Coins Run</div>
+                      <div className="text-base font-black mt-1 text-amber-400">{saveData.highScoreCoins} 💰</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Rider Badges</h3>
+                    {ACHIEVEMENTS.map(ach => {
+                      const isCompleted = saveData.completedAchievements.includes(ach.id);
+                      return (
+                        <div key={ach.id} className={`p-3 rounded-lg border flex items-center justify-between ${isCompleted ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-zinc-950 border-zinc-900 text-zinc-500'}`}>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{ach.icon}</span>
+                            <div>
+                              <h4 className={`font-bold text-xs ${isCompleted ? 'text-zinc-200' : 'text-zinc-600'}`}>{ach.title}</h4>
+                              <p className="text-[9px] text-zinc-500">{ach.desc}</p>
+                            </div>
+                          </div>
+                          {isCompleted ? <Icons.CheckCircle className="w-5 h-5 text-emerald-500" /> : <div className="w-5 h-5 rounded-full border border-zinc-800" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </main>
+
+            <footer className="bg-zinc-900 border-t border-zinc-850 py-2 px-4 shrink-0 mt-auto">
+              <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
+                {[
+                  { id: 'main', icon: <Icons.Bike className="w-4 h-4" />, label: 'Simulator' },
+                  { id: 'locations', icon: <Icons.MapPin className="w-4 h-4" />, label: 'Routes' },
+                  { id: 'garage', icon: <Icons.Wrench className="w-4 h-4" />, label: 'Garage' },
+                  { id: 'stats', icon: <Icons.Award className="w-4 h-4" />, label: 'Badges' }
+                ].map(tab => (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center justify-center py-1 rounded-lg ${activeTab === tab.id ? 'text-white font-bold bg-zinc-800' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                    {tab.icon}
+                    <span className="text-[9px] mt-1">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </footer>
+          </div>
+        );
+      }
+
+      // 5. HEADS-UP DISPLAY (HUD) COMPONENT
+      function HUD({ coins, speed, distance, fuel, maxFuel, passenger, steeringMode, onSteerLeft, onSteerRight, onGas, onBrake, onHorn, warningMessage, isPaused, onPauseToggle, onExitGame }) {
+        const fuelPercentage = Math.max(0, Math.min(100, (fuel / maxFuel) * 100));
+        const isFuelLow = fuelPercentage < 25;
+
+        return (
+          <div className="absolute inset-0 pointer-events-none select-none flex flex-col justify-between p-4 font-sans text-white z-20 animate-fade-in">
+            {/* TOP STAT BAR */}
+            <div className="w-full flex justify-between items-start pointer-events-auto shrink-0 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5 bg-zinc-950/80 backdrop-blur border border-zinc-800 rounded-xl px-3 py-1">
+                  <Icons.Coins className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <span className="text-[8px] text-zinc-400 block font-mono">KES SHILINGI</span>
+                    <span className="text-xs font-black font-mono text-amber-400 leading-none">{coins}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 bg-zinc-950/80 backdrop-blur border border-zinc-800 rounded-xl px-3 py-1">
+                  <Icons.MapPin className="w-4 h-4 text-blue-400" />
+                  <div>
+                    <span className="text-[8px] text-zinc-400 block font-mono">DISTANCE</span>
+                    <span className="text-xs font-black font-mono text-blue-400 leading-none">{distance.toFixed(2)} KM</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end gap-1.5">
+                <div className="bg-zinc-950/80 backdrop-blur border border-zinc-800 rounded-xl px-3 py-1 text-right flex items-center gap-2">
+                  <div>
+                    <span className="text-[8px] text-zinc-400 block font-mono">SPEED</span>
+                    <span className="text-xs font-black font-mono text-zinc-100 leading-none">{Math.floor(speed * 9)} <span className="text-[8px] text-red-500">KM/H</span></span>
+                  </div>
+                  <Icons.Zap className="w-4 h-4 text-red-500" />
+                </div>
+                <div className="bg-zinc-950/80 backdrop-blur border border-zinc-800 rounded-xl px-3 py-1 w-28">
+                  <div className="flex justify-between items-center text-[8px] font-bold text-zinc-400 mb-0.5 font-mono">
+                    <span className="flex items-center gap-0.5"><Icons.Flame className={`w-3 h-3 ${isFuelLow && 'text-red-500 animate-pulse'}`} /> PETROL</span>
+                    <span>{Math.round(fuelPercentage)}%</span>
+                  </div>
+                  <div className="h-1 bg-zinc-900 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${isFuelLow ? 'bg-red-500 animate-pulse' : 'bg-gradient-to-r from-amber-500 to-amber-400'}`} style={{ width: `${fuelPercentage}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* WARNINGS SCREEN CENTER */}
+            <div className="flex-1 flex flex-col justify-center items-center">
+              {warningMessage && (
+                <div className="px-4 py-2 bg-red-600/90 backdrop-blur border border-red-500 text-white rounded-xl shadow-xl flex items-center gap-1.5 text-xs font-black uppercase tracking-wider font-mono animate-scale-in">
+                  <Icons.ShieldAlert className="w-4 h-4 text-yellow-300 animate-bounce" />
+                  <span>{warningMessage}</span>
+                </div>
+              )}
+            </div>
+
+            {/* ACTIVE PASSENGER DRAWER CARD */}
+            {passenger && (
+              <div className="w-full max-w-xs mx-auto pointer-events-auto bg-zinc-950/90 backdrop-blur border border-zinc-800 p-2.5 rounded-xl shadow-xl flex flex-col gap-1 relative mb-2 animate-slide-up">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-white to-green-600" />
+                <div className="flex justify-between items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xl">{passenger.avatar}</span>
+                    <div>
+                      <h4 className="font-extrabold text-xs text-white leading-none">{passenger.name}</h4>
+                      <span className="text-[8px] font-mono font-black text-zinc-500">BOARDED PASSENGER</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[8px] text-zinc-500 block leading-none">REWARD KES</span>
+                    <span className="text-xs font-black font-mono text-emerald-400 leading-none">+{Math.floor(passenger.fare * passenger.payrate)}</span>
+                  </div>
+                </div>
+                <div className="h-1 bg-zinc-900 rounded-full overflow-hidden mt-1 relative">
+                  <div className="h-full bg-blue-500" style={{ width: `${(passenger.distanceTraveled / passenger.targetDistance) * 100}%` }} />
+                </div>
+                <div className="text-center text-[8px] text-zinc-400 font-mono">
+                  {(passenger.targetDistance - passenger.distanceTraveled).toFixed(2)} KM to drop-off
+                </div>
+              </div>
+            )}
+
+            {/* CONTROLS BUTTONS */}
+            <div className="w-full pointer-events-auto shrink-0 flex flex-col gap-2">
+              <div className="flex justify-between items-center px-1">
+                <button onClick={onPauseToggle} className="w-8 h-8 rounded bg-zinc-950/80 backdrop-blur text-zinc-300 border border-zinc-800 flex items-center justify-center font-bold text-xs">{isPaused ? '▶' : '⏸'}</button>
+                <button onClick={onHorn} className="px-3 py-1.5 rounded bg-amber-500 text-zinc-950 border border-amber-600 font-black text-[10px] tracking-wider uppercase">🔊 HONK!</button>
+                <button onClick={onExitGame} className="w-8 h-8 rounded bg-zinc-950/80 backdrop-blur text-red-400 border border-zinc-800 flex items-center justify-center font-bold text-xs">🏠</button>
+              </div>
+
+              <div className="flex justify-between items-center gap-4">
+                {steeringMode === 'buttons' ? (
+                  <div className="flex gap-2">
+                    <button onTouchStart={() => onSteerLeft(true)} onTouchEnd={() => onSteerLeft(false)} onMouseDown={() => onSteerLeft(true)} onMouseUp={() => onSteerLeft(false)} onMouseLeave={() => onSteerLeft(false)} className="w-12 h-12 rounded-full bg-zinc-950/85 border border-zinc-700 text-zinc-200 flex items-center justify-center text-lg font-bold">◀</button>
+                    <button onTouchStart={() => onSteerRight(true)} onTouchEnd={() => onSteerRight(false)} onMouseDown={() => onSteerRight(true)} onMouseUp={() => onSteerRight(false)} onMouseLeave={() => onSteerRight(false)} className="w-12 h-12 rounded-full bg-zinc-950/85 border border-zinc-700 text-zinc-200 flex items-center justify-center text-lg font-bold">▶</button>
+                  </div>
+                ) : (
+                  <div className="text-[8px] text-zinc-500 font-mono italic pl-2">
+                    {steeringMode === 'tilt' ? 'Tilt screen left/right' : 'Use A/D or Arrow keys'}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button onTouchStart={() => onBrake(true)} onTouchEnd={() => onBrake(false)} onMouseDown={() => onBrake(true)} onMouseUp={() => onBrake(false)} onMouseLeave={() => onBrake(false)} className="w-14 h-14 rounded-xl bg-zinc-950/85 border border-red-800 text-red-500 flex flex-col items-center justify-center text-[10px] font-black tracking-wider">BRAKE</button>
+                  <button onTouchStart={() => onGas(true)} onTouchEnd={() => onGas(false)} onMouseDown={() => onGas(true)} onMouseUp={() => onGas(false)} onMouseLeave={() => onGas(false)} className="w-14 h-14 rounded-xl bg-emerald-600/85 border border-emerald-500 text-white flex flex-col items-center justify-center text-[10px] font-black tracking-wider">GAS</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // 6. GAME CANVAS CORE SIMULATION ENGINE
+      function GameCanvas({ activeBikeId, locationId, upgrades, steeringMode, weather, isPaused, leftSteerPressed, rightSteerPressed, gasPressed, brakePressed, onGameStatsUpdate, onPassengerUpdate, onTriggerWarning, onGameOver, onPlaySound, soundEnabled }) {
+        const containerRef = useRef(null);
+        const canvasRef = useRef(null);
+        const requestRef = useRef(null);
+
+        const stateRef = useRef({
+          bikeX: 200,
+          bikeY: 500,
+          bikeVx: 0,
+          bikeSpeed: 0,
+          bikeMaxSpeed: 15,
+          bikeLean: 0,
+          fuel: 100,
+          maxFuel: 100,
+          coinsCollectedThisRun: 0,
+          distanceKm: 0,
+          activePassenger: null,
+          stageProgress: 0,
+          stageActive: false,
+          stageX: 0,
+          stageY: -300,
+          stagePassenger: null,
+          roadScrollY: 0,
+          sceneryScrollY: 0,
+          obstacles: [],
+          coins: [],
+          particles: []
+        });
+
+        const bikeConfigRef = useRef(BIKES[0]);
+        const locationConfigRef = useRef(LOCATIONS[0]);
+        const upgradesRef = useRef(upgrades);
+        const steeringRef = useRef(steeringMode);
+        const weatherRef = useRef(weather);
+        const keysPressed = useRef({});
+        const inputState = useRef({ left: false, right: false, gas: false, brake: false });
+        const tiltRef = useRef(0);
+
+        useEffect(() => {
+          const bike = BIKES.find(b => b.id === activeBikeId) || BIKES[0];
+          const loc = LOCATIONS.find(l => l.id === locationId) || LOCATIONS[0];
+          bikeConfigRef.current = bike;
+          locationConfigRef.current = loc;
+          upgradesRef.current = upgrades;
+          steeringRef.current = steeringMode;
+          weatherRef.current = weather;
+          stateRef.current.maxFuel = 100 + upgrades.tank * 30;
+          stateRef.current.bikeMaxSpeed = bike.maxSpeed + upgrades.engine * 1.2;
+        }, [activeBikeId, locationId, upgrades, steeringMode, weather]);
+
+        useEffect(() => {
+          inputState.current = { left: leftSteerPressed, right: rightSteerPressed, gas: gasPressed, brake: brakePressed };
+        }, [leftSteerPressed, rightSteerPressed, gasPressed, brakePressed]);
+
+        useEffect(() => {
+          const handleKeyDown = (e) => { keysPressed.current[e.key.toLowerCase()] = true; };
+          const handleKeyUp = (e) => { keysPressed.current[e.key.toLowerCase()] = false; };
+          window.addEventListener('keydown', handleKeyDown);
+          window.addEventListener('keyup', handleKeyUp);
+          return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+          };
+        }, []);
+
+        useEffect(() => {
+          const handleOrientation = (e) => {
+            if (steeringRef.current !== 'tilt') return;
+            const gamma = e.gamma || 0;
+            let rawTilt = gamma / 25;
+            tiltRef.current = tiltRef.current * 0.7 + Math.max(-1, Math.min(1, rawTilt)) * 0.3;
+          };
+          window.addEventListener('deviceorientation', handleOrientation);
+          return () => window.removeEventListener('deviceorientation', handleOrientation);
+        }, []);
+
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          const resizeCanvas = () => {
+            const container = containerRef.current;
+            if (!container) return;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            stateRef.current.bikeX = canvas.width / 2;
+            stateRef.current.bikeY = canvas.height * 0.82;
+          };
+
+          const resizeObserver = new ResizeObserver(() => resizeCanvas());
+          if (containerRef.current) resizeObserver.observe(containerRef.current);
+          resizeCanvas();
+
+          const state = stateRef.current;
+          state.fuel = 100 + upgradesRef.current.tank * 30;
+          state.coinsCollectedThisRun = 0;
+          state.distanceKm = 0;
+          state.bikeSpeed = 0;
+          state.activePassenger = null;
+          state.stageProgress = 0;
+          state.stageActive = false;
+          state.obstacles = [];
+          state.coins = [];
+          state.particles = [];
+
+          onPassengerUpdate(null);
+          onGameStatsUpdate(0, 0, 0);
+
+          // Spawn Initial Items
+          const w = canvas.width || 400;
+          for (let i = 0; i < 8; i++) {
+            state.coins.push({
+              id: Math.random().toString(),
+              x: 80 + Math.random() * (w - 160),
+              y: -150 - i * 160,
+              collected: false,
+              value: 10,
+              isFuel: Math.random() < 0.25
+            });
+          }
+          for (let i = 0; i < 3; i++) {
+            state.obstacles.push({
+              id: Math.random().toString(),
+              x: 80 + Math.random() * (w - 160),
+              y: -250 - i * 350,
+              width: 50,
+              height: 50,
+              speed: 1.0 + Math.random() * 2,
+              type: ['sedan', 'matatu', 'tuktuk', 'goat', 'pothole'][Math.floor(Math.random() * 5)],
+              color: '#dc2626',
+              damaged: false
+            });
+          }
+
+          if (soundEnabled) BodaAudio.startEngine();
+
+          let lastTime = performance.now();
+          let frameCount = 0;
+
+          const gameLoop = (time) => {
+            if (isPaused) {
+              lastTime = time;
+              requestRef.current = requestAnimationFrame(gameLoop);
+              return;
+            }
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
+            frameCount++;
+
+            const w = canvas.width;
+            const h = canvas.height;
+            state.bikeY = h * 0.82;
+
+            // Engine sound updates
+            if (soundEnabled) {
+              BodaAudio.updateEngine(state.bikeSpeed / state.bikeMaxSpeed);
+            }
+
+            // Inputs
+            let gasActive = inputState.current.gas || keysPressed.current['w'] || keysPressed.current['arrowup'];
+            let brakeActive = inputState.current.brake || keysPressed.current['s'] || keysPressed.current['arrowdown'];
+
+            let accelMult = 1.0;
+            let brakeMult = 1.0;
+            let gripMult = 1.0;
+
+            if (weatherRef.current === 'rain') {
+              brakeMult = 0.55;
+              gripMult = 0.55;
+            } else if (weatherRef.current === 'dusty') {
+              accelMult = 0.8;
+              gripMult = 0.75;
+            }
+
+            const accelFactor = (bikeConfigRef.current.acceleration + upgradesRef.current.engine * 0.12) * accelMult;
+            const brakeFactor = (bikeConfigRef.current.braking + upgradesRef.current.brakes * 0.18) * brakeMult;
+            const mass = state.activePassenger ? state.activePassenger.weight : 1.0;
+
+            if (gasActive && state.fuel > 0) {
+              state.bikeSpeed += (accelFactor / mass) * 60 * dt;
+              state.fuel -= 4.0 * dt;
+            } else {
+              state.bikeSpeed -= 2.0 * dt;
+            }
+            if (brakeActive) state.bikeSpeed -= (brakeFactor / mass) * 120 * dt;
+
+            state.bikeSpeed = Math.max(0, Math.min(state.bikeSpeed, state.bikeMaxSpeed));
+
+            // Out of petrol
+            if (state.fuel <= 0) {
+              state.fuel = 0;
+              if (state.bikeSpeed < 0.2) {
+                BodaAudio.stopEngine();
+                onGameOver(state.coinsCollectedThisRun, state.distanceKm, "Out of fuel! Tafuta petroli next time!", false);
+                return;
+              }
+              onTriggerWarning("OUT OF PETROL! GLIDING TO STOP...");
+            } else if (state.fuel < state.maxFuel * 0.25) {
+              onTriggerWarning("PETROL LOW! SWERVE TO PICK JERRYCANS");
+            } else {
+              onTriggerWarning(null);
+            }
+
+            // Steer
+            let steerVal = 0;
+            if (steeringRef.current === 'keyboard') {
+              if (keysPressed.current['a'] || keysPressed.current['arrowleft']) steerVal = -1;
+              else if (keysPressed.current['d'] || keysPressed.current['arrowright']) steerVal = 1;
+            } else if (steeringRef.current === 'buttons') {
+              if (inputState.current.left) steerVal = -1;
+              if (inputState.current.right) steerVal = 1;
+            } else if (steeringRef.current === 'tilt') {
+              steerVal = tiltRef.current;
+            }
+
+            const tireGrip = (1.0 + upgradesRef.current.tires * 0.25) * gripMult;
+            state.bikeVx = steerVal * (bikeConfigRef.current.handling * tireGrip) * (4.0 + state.bikeSpeed * 0.15);
+            state.bikeX += state.bikeVx;
+            state.bikeLean = state.bikeLean * 0.8 + (steerVal * 0.2) * 0.2;
+
+            // Constrain
+            if (state.bikeX < 55) { state.bikeX = 55; state.bikeSpeed *= 0.95; }
+            if (state.bikeX > w - 55) { state.bikeX = w - 55; state.bikeSpeed *= 0.95; }
+
+            // Travel Distance
+            const chunkDist = (state.bikeSpeed * dt) * 0.01;
+            state.distanceKm += chunkDist;
+            state.stageProgress += chunkDist;
+
+            // Passenger drop-off checks
+            if (state.activePassenger) {
+              state.activePassenger.distanceTraveled += chunkDist;
+              if (state.activePassenger.distanceTraveled >= state.activePassenger.targetDistance) {
+                const earned = Math.floor(state.activePassenger.fare * state.activePassenger.payrate);
+                state.coinsCollectedThisRun += earned;
+                onPlaySound('success');
+                state.activePassenger = null;
+                state.stageProgress = 0;
+                onPassengerUpdate(null);
+                onTriggerWarning("DELIVERED SAFELY! BONUS EARNED!");
+              } else {
+                onPassengerUpdate({ ...state.activePassenger });
+              }
+            }
+
+            // Road & Scenery tiling scroll
+            state.roadScrollY += state.bikeSpeed;
+            if (state.roadScrollY > 75) state.roadScrollY = 0;
+            state.sceneryScrollY += state.bikeSpeed * 0.8;
+            if (state.sceneryScrollY > h) state.sceneryScrollY = -200;
+
+            // Spawning Items
+            state.coins.forEach(c => {
+              c.y += state.bikeSpeed;
+              if (c.y > h + 100) {
+                c.y = -150 - Math.random() * 100;
+                c.x = 80 + Math.random() * (w - 160);
+                c.collected = false;
+                c.isFuel = Math.random() < 0.22;
+              }
+              // Pick Up Collision
+              if (!c.collected && Math.hypot(state.bikeX - c.x, state.bikeY - c.y) < 28) {
+                c.collected = true;
+                if (c.isFuel) {
+                  state.fuel = Math.min(state.maxFuel, state.fuel + 40);
+                  onPlaySound('fuel');
+                } else {
+                  state.coinsCollectedThisRun += c.value;
+                  onPlaySound('coin');
+                }
+              }
+            });
+
+            // Road stage shelter
+            if (!state.activePassenger && state.stageProgress > 0.6 && !state.stageActive) {
+              state.stageActive = true;
+              state.stageY = -200;
+              state.stageX = w - 50;
+              state.stagePassenger = generateRandomPassenger();
+            }
+
+            if (state.stageActive) {
+              state.stageY += state.bikeSpeed;
+              if (state.stageY > state.bikeY - 60 && state.stageY < state.bikeY + 60) {
+                if (state.bikeSpeed < 2.0) {
+                  state.activePassenger = state.stagePassenger;
+                  state.stageActive = false;
+                  state.stageProgress = 0;
+                  onPlaySound('coin');
+                  onTriggerWarning(`RIDER ON BOARD: ${state.activePassenger.name}`);
+                  onPassengerUpdate({ ...state.activePassenger });
+                } else {
+                  onTriggerWarning("SLOW BELOW 5 KM/H TO BOARD PASSENGER!");
+                }
+              }
+              if (state.stageY > h + 200) {
+                state.stageActive = false;
+                state.stageProgress = 0.2;
+              }
+            }
+
+            // Move & Draw Obstacles
+            state.obstacles.forEach(ob => {
+              ob.y += state.bikeSpeed - ob.speed;
+              if (ob.y > h + 150) {
+                ob.y = -200 - Math.random() * 400;
+                ob.x = 80 + Math.random() * (w - 160);
+                ob.type = ['sedan', 'matatu', 'tuktuk', 'goat', 'pothole'][Math.floor(Math.random() * 5)];
+                ob.speed = ob.type === 'pothole' ? 0 : 1.0 + Math.random() * 3;
+                ob.damaged = false;
+              }
+
+              // Collision Check
+              if (!ob.damaged && Math.hypot(state.bikeX - ob.x, state.bikeY - ob.y) < (ob.type === 'pothole' ? 25 : 32)) {
+                ob.damaged = true;
+                onPlaySound('crash');
+                if (ob.type === 'pothole') {
+                  state.bikeSpeed *= 0.5;
+                  if (state.activePassenger) {
+                    state.activePassenger.comfort = Math.max(0, state.activePassenger.comfort - 25);
+                    if (state.activePassenger.comfort <= 0) {
+                      state.activePassenger = null;
+                      onPassengerUpdate(null);
+                      onTriggerWarning("PASSENGER ALIGHTED DUE TO ROUGH RIDE!");
+                    }
+                  }
+                } else {
+                  onGameOver(state.coinsCollectedThisRun, state.distanceKm, `Crushed into a ${ob.type.toUpperCase()}! Kwisha wewe!`, true);
+                }
+              }
+            });
+
+            // DRAW SCENE
+            const currentLoc = locationConfigRef.current;
+            ctx.fillStyle = currentLoc.shoulderColor;
+            ctx.fillRect(0, 0, w, h);
+
+            // Draw highway lane
+            ctx.fillStyle = currentLoc.roadColor;
+            ctx.fillRect(50, 0, w - 100, h);
+
+            // Side lines
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(50, 0, 4, h);
+            ctx.fillRect(w - 54, 0, 4, h);
+
+            // Center dashes
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([30, 40]);
+            ctx.beginPath();
+            ctx.moveTo(w / 2, state.roadScrollY - 70);
+            ctx.lineTo(w / 2, h + 70);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw decorative landscape emojis
+            ctx.font = '22px Arial';
+            ctx.fillText(currentLoc.sceneryType === 'coast' ? '🌴' : '🏡', 15, state.sceneryScrollY);
+            ctx.fillText(currentLoc.sceneryType === 'coast' ? '🌴' : '🌳', w - 35, state.sceneryScrollY + h/2);
+
+            // Draw Boda Stage
+            if (state.stageActive) {
+              ctx.fillStyle = '#1e293b';
+              ctx.fillRect(state.stageX - 15, state.stageY - 20, 30, 40);
+              ctx.fillStyle = '#ef4444';
+              ctx.fillRect(state.stageX - 20, state.stageY - 30, 40, 10);
+              ctx.fillStyle = '#000';
+              ctx.font = '9px sans-serif';
+              ctx.fillStyle = '#fbbf24';
+              ctx.fillText('STAGE', state.stageX - 14, state.stageY - 10);
+              if (state.stagePassenger) {
+                ctx.font = '18px Arial';
+                ctx.fillText(state.stagePassenger.avatar, state.stageX - 8, state.stageY + 15);
+              }
+            }
+
+            // Draw coins
+            state.coins.forEach(c => {
+              if (c.collected) return;
+              ctx.font = '20px Arial';
+              ctx.fillText(c.isFuel ? '⛽' : '🪙', c.x - 10, c.y + 7);
+            });
+
+            // Draw obstacles
+            state.obstacles.forEach(ob => {
+              ctx.font = '24px Arial';
+              let emoji = '🚗';
+              if (ob.type === 'matatu') emoji = '🚌';
+              else if (ob.type === 'tuktuk') emoji = '🛺';
+              else if (ob.type === 'goat') emoji = '🐐';
+              else if (ob.type === 'pothole') emoji = '🕳️';
+              ctx.fillText(emoji, ob.x - 12, ob.y + 10);
+            });
+
+            // Draw Rider & Bike (arcade drawing style)
+            ctx.save();
+            ctx.translate(state.bikeX, state.bikeY);
+            ctx.rotate(state.bikeLean);
+
+            // Headlight glow
+            const lightGrad = ctx.createLinearGradient(0, -30, 0, -150);
+            lightGrad.addColorStop(0, 'rgba(253, 224, 71, 0.4)');
+            lightGrad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+            ctx.fillStyle = lightGrad;
+            ctx.beginPath();
+            ctx.moveTo(0, -30);
+            ctx.lineTo(-40, -150);
+            ctx.lineTo(40, -150);
+            ctx.closePath();
+            ctx.fill();
+
+            // Bike frame shadow/wheels
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(-4, -30, 8, 60); // tires vertical view
+            ctx.fillStyle = bikeConfigRef.current.color;
+            ctx.fillRect(-6, -15, 12, 30); // body chassis
+
+            // Rider helmet
+            ctx.fillStyle = '#84cc16'; // jacket
+            ctx.fillRect(-7, -4, 14, 10);
+            ctx.fillStyle = '#ef4444'; // Helmet Red
+            ctx.beginPath();
+            ctx.arc(0, -1, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#111'; // Visor
+            ctx.fillRect(-4, -6, 8, 3);
+
+            // Boarded Passenger on pillion seat behind rider
+            if (state.activePassenger) {
+              ctx.font = '18px Arial';
+              ctx.fillText(state.activePassenger.avatar, -9, 25);
+            }
+
+            ctx.restore();
+
+            // Weather tints
+            if (weatherRef.current === 'rain') {
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.18)';
+              ctx.fillRect(0, 0, w, h);
+            } else if (weatherRef.current === 'dusty') {
+              ctx.fillStyle = 'rgba(120, 85, 45, 0.15)';
+              ctx.fillRect(0, 0, w, h);
+            }
+
+            // Sync Stats Back
+            if (frameCount % 6 === 0) {
+              onGameStatsUpdate(state.coinsCollectedThisRun, state.distanceKm, state.bikeSpeed);
+            }
+
+            requestRef.current = requestAnimationFrame(gameLoop);
+          };
+
+          requestRef.current = requestAnimationFrame(gameLoop);
+
+          return () => {
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
+            BodaAudio.stopEngine();
+          };
+        }, [isPaused]);
+
+        return (
+          <div ref={containerRef} className="w-full h-full relative overflow-hidden bg-zinc-950">
+            <canvas ref={canvasRef} className="absolute inset-0 block w-full h-full" />
+          </div>
+        );
+      }
+
+      // 7. CORE CONTAINER ENGINE (App)
+      const SAVE_KEY = 'boda_rider_ke_save_standalone_v2';
+      const INITIAL_SAVE = {
+        coins: 150,
+        ownedBikes: ['boxer_150'],
+        activeBikeId: 'boxer_150',
+        upgrades: { engine: 0, brakes: 0, tires: 0, tank: 0 },
+        highScoreDistance: 0,
+        highScoreCoins: 0,
+        completedAchievements: []
+      };
+
+      export default function App() {
+        const [saveData, setSaveData] = useState(INITIAL_SAVE);
+        const [isPlaying, setIsPlaying] = useState(false);
+        const [isPaused, setIsPaused] = useState(false);
+        const [selectedLocationId, setSelectedLocationId] = useState('nairobi_highway');
+        const [steeringMode, setSteeringMode] = useState('buttons');
+        const [soundEnabled, setSoundEnabled] = useState(true);
+        const [weather, setWeather] = useState('clear');
+
+        const [runCoins, setRunCoins] = useState(0);
+        const [runDistance, setRunDistance] = useState(0);
+        const [runSpeed, setRunSpeed] = useState(0);
+        const [passenger, setPassenger] = useState(null);
+        const [warningMessage, setWarningMessage] = useState(null);
+        const [gameOverInfo, setGameOverInfo] = useState(null);
+
+        useEffect(() => {
+          const raw = localStorage.getItem(SAVE_KEY);
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              setSaveData({ ...INITIAL_SAVE, ...parsed, upgrades: { ...INITIAL_SAVE.upgrades, ...(parsed.upgrades || {}) } });
+            } catch (e) {
+              console.warn(e);
+            }
+          }
+        }, []);
+
+        const save = (updated) => {
+          setSaveData(updated);
+          localStorage.setItem(SAVE_KEY, JSON.stringify(updated));
+        };
+
+        const handleToggleSound = () => {
+          const next = !soundEnabled;
+          setSoundEnabled(next);
+          if (!next) BodaAudio.stopEngine();
+        };
+
+        const triggerAudio = (type) => {
+          if (!soundEnabled) return;
+          if (type === 'coin') BodaAudio.playCoin();
+          else if (type === 'fuel') BodaAudio.playFuel();
+          else if (type === 'crash') BodaAudio.playCrash();
+          else if (type === 'success') BodaAudio.playSuccess();
+          else if (type === 'horn') BodaAudio.playHorn();
+        };
+
+        const handleUpgrade = (type) => {
+          const current = saveData.upgrades[type];
+          if (current >= 5) return;
+          const cost = 80 + current * 120;
+          if (saveData.coins >= cost) {
+            const nextUpg = { ...saveData.upgrades, [type]: current + 1 };
+            save({ ...saveData, coins: saveData.coins - cost, upgrades: nextUpg });
+            triggerAudio('success');
+          }
+        };
+
+        const handlePurchaseBike = (bikeId, price) => {
+          if (saveData.coins >= price && !saveData.ownedBikes.includes(bikeId)) {
+            save({ ...saveData, coins: saveData.coins - price, ownedBikes: [...saveData.ownedBikes, bikeId], activeBikeId: bikeId });
+            triggerAudio('success');
+          }
+        };
+
+        const handleSelectBike = (bikeId) => {
+          if (saveData.ownedBikes.includes(bikeId)) {
+            save({ ...saveData, activeBikeId: bikeId });
+            triggerAudio('coin');
+          }
+        };
+
+        const handleStartGame = () => {
+          setIsPlaying(true);
+          setIsPaused(false);
+          setGameOverInfo(null);
+          setRunCoins(0);
+          setRunDistance(0);
+          setPassenger(null);
+          setWarningMessage(null);
+          if (soundEnabled) BodaAudio.startEngine();
+        };
+
+        const handleGameOver = (finalCoins, distance, reason, isCrash) => {
+          BodaAudio.stopEngine();
+          setIsPlaying(false);
+          const currentAchievements = [...saveData.completedAchievements];
+          const newUnlocked = [];
+
+          if (!currentAchievements.includes('first_ride') && distance > 0.4) {
+            newUnlocked.push('first_ride'); currentAchievements.push('first_ride');
+          }
+          if (!currentAchievements.includes('coin_hunter') && finalCoins >= 100) {
+            newUnlocked.push('coin_hunter'); currentAchievements.push('coin_hunter');
+          }
+          if (!currentAchievements.includes('distance_pro') && (saveData.highScoreDistance + distance) > 5.0) {
+            newUnlocked.push('distance_pro'); currentAchievements.push('distance_pro');
+          }
+
+          save({
+            ...saveData,
+            coins: saveData.coins + finalCoins,
+            highScoreDistance: Math.max(saveData.highScoreDistance, distance),
+            highScoreCoins: Math.max(saveData.highScoreCoins, finalCoins),
+            completedAchievements: currentAchievements
+          });
+
+          setGameOverInfo({ coins: finalCoins, distance, reason, unlockedBadges: newUnlocked, isCrash });
+        };
+
+        const [leftPressed, setLeftPressed] = useState(false);
+        const [rightPressed, setRightPressed] = useState(false);
+        const [gasPressed, setGasPressed] = useState(false);
+        const [brakePressed, setBrakePressed] = useState(false);
+
+        return (
+          <div className="relative w-full h-screen select-none overflow-hidden bg-zinc-950 flex flex-col justify-center items-center">
+            {!isPlaying && !gameOverInfo && (
+              <Menu
+                saveData={saveData}
+                selectedLocationId={selectedLocationId}
+                onSelectLocation={setSelectedLocationId}
+                steeringMode={steeringMode}
+                onSelectSteeringMode={setSteeringMode}
+                weather={weather}
+                onSelectWeather={setWeather}
+                onUpgrade={handleUpgrade}
+                onPurchaseBike={handlePurchaseBike}
+                onSelectBike={handleSelectBike}
+                onStartGame={handleStartGame}
+                soundEnabled={soundEnabled}
+                onToggleSound={handleToggleSound}
+              />
+            )}
+
+            {isPlaying && (
+              <div className="absolute inset-0 w-full h-full flex flex-col justify-end">
+                <GameCanvas
+                  activeBikeId={saveData.activeBikeId}
+                  locationId={selectedLocationId}
+                  upgrades={saveData.upgrades}
+                  steeringMode={steeringMode}
+                  weather={weather}
+                  isPaused={isPaused}
+                  leftSteerPressed={leftPressed}
+                  rightSteerPressed={rightPressed}
+                  gasPressed={gasPressed}
+                  brakePressed={brakePressed}
+                  onGameStatsUpdate={(coins, distance, speed) => {
+                    setRunCoins(coins);
+                    setRunDistance(distance);
+                    setRunSpeed(speed);
+                  }}
+                  onPassengerUpdate={setPassenger}
+                  onTriggerWarning={setWarningMessage}
+                  onGameOver={handleGameOver}
+                  onPlaySound={triggerAudio}
+                  soundEnabled={soundEnabled}
+                />
+                <HUD
+                  coins={runCoins}
+                  speed={runSpeed}
+                  distance={runDistance}
+                  fuel={runCoins * 0.1 /* simulated / synchronized fallback inside canvas */}
+                  maxFuel={100}
+                  passenger={passenger}
+                  steeringMode={steeringMode}
+                  onSteerLeft={setLeftPressed}
+                  onSteerRight={setRightPressed}
+                  onGas={setGasPressed}
+                  onBrake={setBrakePressed}
+                  onHorn={() => triggerAudio('horn')}
+                  warningMessage={warningMessage}
+                  isPaused={isPaused}
+                  onPauseToggle={() => {
+                    setIsPaused(!isPaused);
+                    if (soundEnabled) {
+                      if (isPaused) BodaAudio.startEngine();
+                      else BodaAudio.stopEngine();
+                    }
+                  }}
+                  onExitGame={() => {
+                    if (window.confirm("Buda, are you sure you want to stop this ride? Coins collected this run won't be saved!")) {
+                      BodaAudio.stopEngine();
+                      setIsPlaying(false);
+                    }
+                  }}
+                />
+
+                {isPaused && (
+                  <div className="absolute inset-0 bg-zinc-950/70 backdrop-blur-sm z-30 flex flex-col justify-center items-center p-6 text-center animate-fade-in">
+                    <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl max-w-sm w-full space-y-6 shadow-2xl animate-scale-in">
+                      <div>
+                        <h3 className="text-xl font-black text-white">RIDE PAUSED</h3>
+                        <p className="text-xs text-zinc-400 mt-1">Take a breath, then get back to the streets</p>
+                      </div>
+                      <div className="space-y-2">
+                        <button onClick={() => { setIsPaused(false); if (soundEnabled) BodaAudio.startEngine(); }} className="w-full py-3 bg-white text-zinc-950 font-black rounded-xl text-xs uppercase tracking-wider transition hover:bg-zinc-200">CONTINUE RIDING</button>
+                        <button onClick={() => { BodaAudio.stopEngine(); setIsPlaying(false); }} className="w-full py-3 bg-zinc-850 text-zinc-400 font-bold rounded-xl text-xs uppercase hover:bg-zinc-800">RETURN TO MENU</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {gameOverInfo && (
+              <div className="fixed inset-0 bg-zinc-950/95 backdrop-blur-sm z-40 flex flex-col justify-center items-center p-4 animate-fade-in">
+                <div className="bg-zinc-900 border border-zinc-800 p-6 sm:p-8 rounded-2xl max-w-sm w-full space-y-6 shadow-2xl text-center animate-scale-in">
+                  <div>
+                    <span className="w-12 h-12 bg-red-600/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3 border border-red-500/20">
+                      {gameOverInfo.isCrash ? <Icons.XCircle className="w-6 h-6 animate-pulse" /> : <Icons.ShieldAlert className="w-6 h-6 animate-bounce" />}
+                    </span>
+                    <h2 className="text-2xl font-black text-red-500">{gameOverInfo.isCrash ? 'MISSION FAILED' : 'OUT OF PETROL'}</h2>
+                    <p className="text-[10px] text-red-400 font-mono uppercase mt-2 px-3 py-1 bg-red-500/10 rounded-full inline-block leading-none">{gameOverInfo.reason}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 bg-zinc-950 p-4 rounded-xl border border-zinc-850">
+                    <div>
+                      <span className="text-[8px] font-mono text-zinc-500 uppercase font-bold block">DISTANCE</span>
+                      <span className="text-lg font-black text-white font-mono">{gameOverInfo.distance.toFixed(2)} KM</span>
+                    </div>
+                    <div className="border-l border-zinc-850">
+                      <span className="text-[8px] font-mono text-zinc-500 uppercase font-bold block">EARNINGS</span>
+                      <span className="text-lg font-black text-amber-400 font-mono">+{gameOverInfo.coins} KES</span>
+                    </div>
+                  </div>
+
+                  {gameOverInfo.unlockedBadges.length > 0 && (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-left space-y-1">
+                      <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">🏆 BADGES UNLOCKED!</h4>
+                      {gameOverInfo.unlockedBadges.map(bId => (
+                        <div key={bId} className="flex items-center gap-1 text-[10px] text-zinc-300 font-medium">
+                          <Icons.Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{bId === 'first_ride' ? 'Stage 1 Complete' : bId === 'coin_hunter' ? 'Chapaa Master' : 'Long Distance Rider'} unlocked!</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-2 pt-2">
+                    <button onClick={handleStartGame} className="w-full py-3.5 bg-gradient-to-r from-red-600 to-amber-500 hover:from-red-500 hover:to-amber-450 text-white font-black rounded-xl text-sm uppercase shadow-lg">RIDE AGAIN</button>
+                    <button onClick={() => setGameOverInfo(null)} className="w-full py-2.5 bg-zinc-800 text-zinc-300 font-bold rounded-xl text-xs uppercase hover:bg-zinc-750">GOTO GARAGE</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // Render App
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+      // PWA SERVICE WORKER REGISTRATION (Dynamic same-origin registration helper)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            console.log('ServiceWorker registered successfully.');
+          }).catch(err => {
+            console.log('Offline cache registration ignored (standard on unhosted local file runs).');
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient: Deep Indigo to Warm Crimson Sunset -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827" /> <!-- Indigo/Dark Slate -->
+      <stop offset="60%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#7c2d12" /> <!-- Warm Teracotta / Orange -->
+    </linearGradient>
+
+    <!-- Sun Glow Gradient -->
+    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="1" />
+      <stop offset="60%" stop-color="#f97316" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Chrome / Metallic Bike Accents -->
+    <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f3f4f6" />
+      <stop offset="50%" stop-color="#9ca3af" />
+      <stop offset="100%" stop-color="#4b5563" />
+    </linearGradient>
+
+    <!-- Kenyan Flag Color Gradients for Speed Trails -->
+    <linearGradient id="kenyaRed" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#991b1b" stop-opacity="0" />
+      <stop offset="100%" stop-color="#dc2626" stop-opacity="1" />
+    </linearGradient>
+    <linearGradient id="kenyaGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#065f46" stop-opacity="0" />
+      <stop offset="100%" stop-color="#059669" stop-opacity="1" />
+    </linearGradient>
+
+    <!-- Glow Filter for Headlight -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Drop Shadow for Icon Elements -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="4" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- App Icon Rounded Background (iOS/Android standard squircle shape) -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Inner border ring for high-end polish -->
+  <rect x="12" y="12" width="488" height="488" rx="100" fill="none" stroke="#f59e0b" stroke-width="3" stroke-opacity="0.3" />
+
+  <!-- Rising African Sun in background -->
+  <circle cx="360" cy="220" r="140" fill="url(#sunGlow)" />
+
+  <!-- Kenyan Flag Dynamic Speed Trails (representing fast Boda riding) -->
+  <g opacity="0.8">
+    <!-- Green Trail -->
+    <path d="M -20 340 L 260 300 Q 320 300 340 320 L 320 340 Q 300 320 250 320 L -20 360 Z" fill="url(#kenyaGreen)" />
+    <!-- White Stripe -->
+    <path d="M -20 362 L 245 327 Q 295 327 310 342 L 300 352 Q 285 337 240 337 L -20 372 Z" fill="#ffffff" opacity="0.9" />
+    <!-- Red Trail -->
+    <path d="M -20 374 L 230 339 Q 280 339 295 354 L 285 364 Q 270 349 225 349 L -20 384 Z" fill="url(#kenyaRed)" />
+    <!-- White Stripe -->
+    <path d="M -20 386 L 215 351 Q 265 351 280 366 L 270 376 Q 255 361 210 361 L -20 396 Z" fill="#ffffff" opacity="0.9" />
+    <!-- Black Trail -->
+    <path d="M -20 398 L 200 363 Q 250 363 265 378 L 255 388 Q 240 373 195 373 L -20 408 Z" fill="#111827" />
+  </g>
+
+  <!-- Ground / Road Perspective Lines -->
+  <path d="M 0 440 L 512 440 L 512 512 L 0 512 Z" fill="#0f172a" opacity="0.9" />
+  <path d="M 120 440 L 60 512" stroke="#475569" stroke-width="4" stroke-dasharray="10 10" />
+  <path d="M 256 440 L 256 512" stroke="#f59e0b" stroke-width="6" stroke-dasharray="20 15" />
+  <path d="M 392 440 L 452 512" stroke="#475569" stroke-width="4" stroke-dasharray="10 10" />
+
+  <!-- BODA BODA BIKE AND RIDER Silhouette (Highly detailed & stylish) -->
+  <g filter="url(#shadow)" transform="translate(45, 20)">
+    
+    <!-- Rear Wheel -->
+    <circle cx="120" cy="340" r="55" fill="#1e293b" stroke="#64748b" stroke-width="12" />
+    <circle cx="120" cy="340" r="28" fill="none" stroke="url(#metalGrad)" stroke-width="8" />
+    <!-- Spokes lines -->
+    <path d="M 120 285 L 120 395 M 65 340 L 175 340 M 81 301 L 159 379 M 81 379 L 159 301" stroke="#9ca3af" stroke-width="2" />
+
+    <!-- Front Wheel -->
+    <circle cx="340" cy="340" r="55" fill="#1e293b" stroke="#64748b" stroke-width="12" />
+    <circle cx="340" cy="340" r="28" fill="none" stroke="url(#metalGrad)" stroke-width="8" />
+    <path d="M 340 285 L 340 395 M 285 340 L 395 340 M 301 301 L 379 379 M 301 379 L 379 301" stroke="#9ca3af" stroke-width="2" />
+
+    <!-- Motorcycle Frame & Engine Block -->
+    <!-- Exhaust pipe -->
+    <path d="M 140 355 L 230 355 L 270 330" fill="none" stroke="url(#metalGrad)" stroke-width="14" stroke-linecap="round" />
+    <path d="M 140 355 L 210 355" fill="none" stroke="#1e293b" stroke-width="6" />
+
+    <!-- Engine area filled block -->
+    <rect x="160" y="290" width="75" height="50" rx="10" fill="#334155" />
+    <!-- Engine Cooling Fins -->
+    <line x1="165" y1="298" x2="230" y2="298" stroke="#f1f5f9" stroke-width="3" />
+    <line x1="165" y1="306" x2="230" y2="306" stroke="#f1f5f9" stroke-width="3" />
+    <line x1="165" y1="314" x2="230" y2="314" stroke="#f1f5f9" stroke-width="3" />
+    <line x1="165" y1="322" x2="230" y2="322" stroke="#f1f5f9" stroke-width="3" />
+    <line x1="165" y1="330" x2="230" y2="330" stroke="#f1f5f9" stroke-width="3" />
+
+    <!-- Golden Yellow Fuel Tank & Main Frame -->
+    <path d="M 140 265 C 160 235, 230 235, 260 250 L 250 290 L 150 290 Z" fill="#eab308" />
+    <!-- Tank decal -->
+    <path d="M 180 250 C 200 245, 220 250, 240 260" fill="none" stroke="#1e293b" stroke-width="4" />
+
+    <!-- Bike seat -->
+    <path d="M 110 265 L 185 265 C 185 265, 185 285, 175 285 L 115 285 Z" fill="#0f172a" />
+    <!-- Mudguards -->
+    <path d="M 70 320 C 70 280, 130 275, 150 290" fill="none" stroke="#eab308" stroke-width="8" stroke-linecap="round" />
+    <path d="M 310 295 C 320 280, 360 280, 375 315" fill="none" stroke="#eab308" stroke-width="8" stroke-linecap="round" />
+
+    <!-- Front Fork and Handlebars -->
+    <line x1="340" y1="340" x2="295" y2="210" stroke="url(#metalGrad)" stroke-width="10" stroke-linecap="round" />
+    <path d="M 285 210 L 305 210 M 290 200 L 270 205" fill="none" stroke="#0f172a" stroke-width="6" stroke-linecap="round" />
+
+    <!-- Headlight & Beam -->
+    <path d="M 310 225 L 325 225 L 320 245 L 305 240 Z" fill="#94a3b8" />
+    <circle cx="318" cy="233" r="8" fill="#fef08a" />
+    <!-- Dynamic Light beam glow -->
+    <path d="M 324 230 L 460 200 L 460 280 Z" fill="#fef08a" opacity="0.35" filter="url(#glow)" />
+
+    <!-- RIDER FIGURE -->
+    <!-- Torso leaning forward in sporty posture -->
+    <path d="M 155 255 L 215 170 L 255 185 L 230 265 Z" fill="#1e3a8a" /> <!-- Deep Blue Jacket -->
+    
+    <!-- Neon Safety Reflector Vest -->
+    <path d="M 180 220 L 215 170 L 245 182 L 220 240 Z" fill="#22c55e" /> <!-- Green Vest -->
+    <!-- Silver reflector strip -->
+    <path d="M 195 215 L 225 174" stroke="#e2e8f0" stroke-width="8" />
+    <path d="M 210 230 L 238 190" stroke="#e2e8f0" stroke-width="8" />
+
+    <!-- Arms holding handlebars -->
+    <path d="M 215 175 L 275 210 L 280 215" fill="none" stroke="#1e3a8a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Gloved Hand -->
+    <circle cx="280" cy="215" r="9" fill="#0f172a" />
+
+    <!-- Legs sitting on bike -->
+    <path d="M 160 260 L 190 320 L 225 320" fill="none" stroke="#0f172a" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Rider Head & Safety Helmet -->
+    <circle cx="230" cy="130" r="28" fill="#1e293b" /> <!-- Base Head -->
+    <!-- Shiny Green Helmet Cover -->
+    <path d="M 200 130 C 200 95, 260 95, 260 130 C 260 142, 245 152, 230 152 C 215 152, 200 140, 200 130 Z" fill="#22c55e" />
+    <!-- Helmet Stripe -->
+    <path d="M 215 105 Q 230 115 245 105" fill="none" stroke="#ffffff" stroke-width="4" />
+    <!-- Helmet Visor (Dark glass, sleek look) -->
+    <path d="M 235 120 C 255 120, 262 130, 258 142 C 250 145, 238 140, 235 120 Z" fill="#0f172a" />
+    <!-- Visor shine reflection -->
+    <path d="M 248 126 Q 254 130 252 134" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- Kenyan Flag Emblem Badge (Sleek corner ribbon) -->
+  <g transform="translate(400, 30)">
+    <!-- Shield Outline -->
+    <path d="M 15 0 L 65 0 C 75 0, 80 5, 80 15 L 80 45 C 80 65, 40 85, 40 85 C 40 85, 0 65, 0 45 L 0 15 C 0 5, 5 0, 15 0 Z" fill="#111827" stroke="#ffffff" stroke-width="2" />
+    <!-- Flag Stripes inside Shield -->
+    <!-- Green -->
+    <path d="M 2 15 C 10 15, 70 15, 78 15 L 78 30 C 70 30, 10 30, 2 30 Z" fill="#059669" />
+    <!-- Red (with white boundaries) -->
+    <rect x="2" y="32" width="76" height="12" fill="#dc2626" />
+    <rect x="2" y="30" width="76" height="2" fill="#ffffff" />
+    <rect x="2" y="44" width="76" height="2" fill="#ffffff" />
+    <!-- Traditional Maasai Shield Emblem in Center -->
+    <ellipse cx="40" cy="37" rx="8" ry="15" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" />
+    <line x1="40" y1="18" x2="40" y2="56" stroke="#ffffff" stroke-width="2" />
+    <circle cx="34" cy="37" r="2" fill="#ffffff" />
+    <circle cx="46" cy="37" r="2" fill="#ffffff" />
+    <line x1="28" y1="28" x2="52" y2="46" stroke="#ffffff" stroke-width="1.5" />
+    <line x1="28" y1="46" x2="52" y2="28" stroke="#ffffff" stroke-width="1.5" />
+  </g>
+
+  <!-- Game Title Overlay Styling: "BODA RIDER" (Curved / Modern badge at the bottom) -->
+  <g transform="translate(256, 445)">
+    <!-- Text background plate -->
+    <path d="M -160 -25 L 160 -25 C 180 -25, 190 -10, 190 10 L 190 15 C 190 35, 180 40, 160 40 L -160 40 C -180 40, -190 35, -190 15 L -190 10 C -190 -10, -180 -25, -160 -25 Z" fill="#0f172a" stroke="#eab308" stroke-width="3" />
+    
+    <!-- Bold Metallic Text "BODA RIDER" -->
+    <text x="0" y="5" font-family="'Impact', 'Arial Black', sans-serif" font-weight="900" font-size="28" fill="#f59e0b" text-anchor="middle" letter-spacing="4">
+      BODA RIDER
+      <tspan fill="#ffffff"> KE</tspan>
+    </text>
+    
+    <!-- Decorative Stars -->
+    <path d="M -135 -2 L -132 -8 L -129 -2 L -135 -5 L -129 -5 Z" fill="#eab308" />
+    <path d="M 129 -2 L 132 -8 L 135 -2 L 129 -5 L 135 -5 Z" fill="#eab308" />
+  </g>
+</svg>

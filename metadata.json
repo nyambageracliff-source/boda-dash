@@ -1,0 +1,6 @@
+{
+  "name": "Real Boda Rider KE",
+  "description": "An interactive Kenyan boda boda motorcycle riding simulator, featuring responsive controls, physics-based obstacle dodging, traffic, and high scores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
